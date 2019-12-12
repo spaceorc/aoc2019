@@ -20,7 +20,7 @@ namespace aoc
         public static bool operator !=(V a, V b) => !(a == b);
         public static V operator +(V a, V b) => new V(a.X + b.X, a.Y + b.Y);
         public static V operator -(V a, V b) => new V(a.X - b.X, a.Y - b.Y);
-        
+
         public int MLen() => Math.Abs(X) + Math.Abs(Y);
         public static int XProd(V a, V b) => a.X * b.Y - a.Y * b.X;
         public static int DProd(V a, V b) => a.X * b.X + a.Y * b.Y;

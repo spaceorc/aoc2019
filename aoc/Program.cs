@@ -10,6 +10,182 @@ namespace aoc
     {
         static void Main(string[] args)
         {
+        }
+
+        static void Main12(string[] args)
+        {
+            var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
+//            var lines = @"
+//<x=-8, y=-10, z=0>
+//<x=5, y=5, z=10>
+//<x=2, y=-7, z=3>
+//<x=9, y=-8, z=-3>
+//
+//".Trim().Split('\n').Select(x => x.Trim()).ToArray();
+            
+            
+            var positions = lines.Select(line =>
+                {
+                    var split = line.Split(new[] {',', '<', '>', ' ', '=', 'x', 'y', 'z'}, StringSplitOptions.RemoveEmptyEntries);
+                    return new V3(int.Parse(split[0]), int.Parse(split[1]), int.Parse(split[2]));
+                }).ToArray();
+
+            var velocities = positions.Select(_ => new V3()).ToArray();
+
+            var x = Solve(p => p.X);
+            var y = Solve(p => p.Y);
+            var z = Solve(p => p.Z);
+
+            Console.Out.WriteLine($"{x} {y} {z} -> {Lcm(x, y, z)}");
+            
+            int Solve(Func<V3, int> getCoord)
+            {
+                Console.Out.WriteLine("START");
+                var coords = positions.Select(getCoord).ToArray();
+                var vels = velocities.Select(getCoord).ToArray();
+                var ocoords = coords.ToArray();
+
+                var sims = 0;
+                while (true)
+                {
+                    for (int i = 0; i < vels.Length - 1; i++)
+                    for (int k = i + 1; k < vels.Length; k++)
+                    {
+                        if (coords[i] < coords[k])
+                        {
+                            vels[i]++;
+                            vels[k]--;
+                        }
+                        else if (coords[i] > coords[k])
+                        {
+                            vels[i]--;
+                            vels[k]++;
+                        }
+                    }
+
+                    var velzero = true;
+                    var ceq = true;
+                    for (int i = 0; i < vels.Length; i++)
+                    {
+                        coords[i] += vels[i];
+                        if (vels[i] != 0)
+                            velzero = false;
+                        if (coords[i] != ocoords[i])
+                            ceq = false;
+                    }
+
+                    ++sims;
+                    if (velzero && ceq)
+                        break;
+                    
+                    if (sims % 1000 == 0)
+                        Console.Out.WriteLine(sims);
+                }
+
+                return sims;
+            }
+//
+//
+//
+//            for (int k = 0; k < positions.Length; k++)
+//            {
+//                Console.Out.WriteLine($"{positions[k]}; {velocities[k]}; {Energy()}");
+//            }
+//            Console.WriteLine();
+//            
+//            for (int i = 0; i < 1000; i++)
+//            {
+//                Simulate();
+//                
+//                for (int k = 0; k < positions.Length; k++)
+//                {
+//                    Console.Out.WriteLine($"{positions[k]}; {velocities[k]}; {Energy()}");
+//                }
+//                Console.WriteLine();
+//            }
+//
+//            var energy = Energy();
+//
+//            Console.Out.WriteLine(energy);
+//
+//            void Simulate()
+//            {
+//                for (int i = 0; i < velocities.Length - 1; i++)
+//                for (int k = i + 1; k < velocities.Length; k++)
+//                {
+//                    if (positions[i].X < positions[k].X)
+//                    {
+//                        velocities[i] = new V3(velocities[i].X + 1, velocities[i].Y, velocities[i].Z);
+//                        velocities[k] = new V3(velocities[k].X - 1, velocities[k].Y, velocities[k].Z);
+//                    }
+//                    else if (positions[i].X > positions[k].X)
+//                    {
+//                        velocities[i] = new V3(velocities[i].X - 1, velocities[i].Y, velocities[i].Z);
+//                        velocities[k] = new V3(velocities[k].X + 1, velocities[k].Y, velocities[k].Z);
+//                    }
+//                    if (positions[i].Y < positions[k].Y)
+//                    {
+//                        velocities[i] = new V3(velocities[i].X, velocities[i].Y + 1, velocities[i].Z);
+//                        velocities[k] = new V3(velocities[k].X, velocities[k].Y - 1, velocities[k].Z);
+//                    }
+//                    else if (positions[i].Y > positions[k].Y)
+//                    {
+//                        velocities[i] = new V3(velocities[i].X, velocities[i].Y - 1, velocities[i].Z);
+//                        velocities[k] = new V3(velocities[k].X, velocities[k].Y + 1, velocities[k].Z);
+//                    }
+//                    if (positions[i].Z < positions[k].Z)
+//                    {
+//                        velocities[i] = new V3(velocities[i].X, velocities[i].Y, velocities[i].Z + 1);
+//                        velocities[k] = new V3(velocities[k].X, velocities[k].Y, velocities[k].Z - 1);
+//                    }
+//                    else if (positions[i].Z > positions[k].Z)
+//                    {
+//                        velocities[i] = new V3(velocities[i].X, velocities[i].Y, velocities[i].Z - 1);
+//                        velocities[k] = new V3(velocities[k].X, velocities[k].Y, velocities[k].Z + 1);
+//                    }
+//                }
+//
+//                for (int i = 0; i < positions.Length; i++)
+//                    positions[i] = positions[i] + velocities[i];
+//            }
+//
+//            long Energy()
+//            {
+//                return positions.Select((p, i) => p.MLen() * velocities[i].MLen()).Sum();
+//            }
+        }
+
+        static long Lcm(params long[] values)
+        {
+            var r = 1L;
+            for (int i = 0; i < values.Length; i++)
+            {
+                r = Lcm(r, values[i]);
+            }
+
+            return r;
+        }
+
+        static long Lcm(long a, long b)
+        {
+            return a / Gcd(a, b) * b;
+        }
+
+        static long Gcd(long a, long b)
+        {
+            while (a != 0 && b != 0)
+            {
+                if (a > b)
+                    a = a % b;
+                else 
+                    b = b % a;
+            }
+
+            return a + b;
+        }
+
+        static void Main11(string[] args)
+        {
             var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
 
             //var line = "104,1125899906842624,99";
