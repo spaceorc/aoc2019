@@ -9,6 +9,8 @@ namespace aoc
         private readonly Queue<long> data = new Queue<long>();
         private TaskCompletionSource<long> tcs;
 
+        public event Action OnWait;
+
         public void Send(long value)
         {
             if (tcs != null)
@@ -24,6 +26,7 @@ namespace aoc
 
         public async Task<long> Wait()
         {
+            OnWait?.Invoke();
             if (data.Count > 0)
                 return data.Dequeue();
 

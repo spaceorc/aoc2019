@@ -2,7 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 
 namespace aoc
 {
@@ -10,6 +13,182 @@ namespace aoc
     {
         static void Main(string[] args)
         {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+
+            //var line = "104,1125899906842624,99";
+
+            var program = line.Split(',').Select(long.Parse).ToArray();
+            program[0] = 2;
+
+            var computer = new Computer("prog", program);
+
+            var tiles = new Dictionary<V, int>();
+
+            var state = 0;
+            var score = 0L;
+            var tx = 0;
+            var ty = 0;
+            V ball = default;
+            V ballDiff = new V(1, 1);
+            V paddle = default;
+            computer.Output = value =>
+            {
+                switch (state)
+                {
+                    case 0:
+                        tx = (int) value;
+                        state = 1;
+                        break;
+                    case 1:
+                        ty = (int) value;
+                        state = 2;
+                        break;
+                    case 2:
+                        if (tx == -1 && ty == 0)
+                            score = value;
+                        else
+                        {
+                            tiles[new V(tx, ty)] = (int) value;
+                            if (value == 4)
+                            {
+                                var nextBall = new V(tx, ty);
+                                if (!ball.Equals(default))
+                                    ballDiff = nextBall - ball;
+                                ball = nextBall;
+                            }
+                            else if (value == 3)
+                                paddle = new V(tx, ty);
+                        }
+
+                        state = 0;
+                        break;
+                }
+            };
+
+            void WriteState()
+            {
+                Console.Clear();
+                var maxx = tiles.Keys.Max(x => x.X);
+                var maxy = tiles.Keys.Max(x => x.Y);
+
+                for (int y = 0; y <= maxy; y++)
+                {
+                    for (int x = 0; x <= maxx; x++)
+                    {
+                        switch (tiles[new V(x, y)])
+                        {
+                            case 0:
+                                Console.Write(' ');
+                                break;
+                            case 1:
+                                Console.Write('|');
+                                break;
+                            case 2:
+                                Console.Write('#');
+                                break;
+                            case 3:
+                                Console.Write('-');
+                                break;
+                            case 4:
+                                Console.Write('0');
+                                break;
+                        }
+                    }
+
+                    Console.WriteLine();
+                }
+                Console.WriteLine(score);
+            }
+
+            computer.Input.OnWait += () =>
+            {
+                WriteState();
+
+                var chosedCmd = 0;
+                for (int cmdd = 0; cmdd <= 2; cmdd++)
+                {
+                    var cmd = cmdd == 2 ? -1 : cmdd; 
+                    var npaddle = new V(paddle.X + cmd, paddle.Y);
+                    
+                    var backup = new Dictionary<V, int>();
+                    backup[paddle] = tiles[paddle];
+                    backup[npaddle] = tiles[npaddle];
+                    
+                    tiles[paddle] = 0;
+                    tiles[npaddle] = 3;
+
+                    var bdif = ballDiff;
+                    while (true)
+                    {
+                        var nextBall = ball + bdif;
+                        var nextBallY = ball + new V(0, bdif.Y);
+                        var nextBallX = ball + new V(bdif.X, 0);
+                        if (tiles[nextBallX] != 0)
+                        {
+                            if (tiles[nextBallX] == 2)
+                            {
+                                backup[nextBallX] = tiles[nextBallX];
+                                tiles[nextBallX] = 0;
+                            }
+                            bdif = new V(-bdif.X, bdif.Y);
+                            continue;
+                        }
+                        if (tiles[nextBallY] != 0)
+                        {
+                            if (tiles[nextBallY] == 2)
+                            {
+                                backup[nextBallY] = tiles[nextBallY];
+                                tiles[nextBallY] = 0;
+                            }
+                            bdif = new V(bdif.X, -bdif.Y);
+                            continue;
+                        }
+                        if (tiles[nextBall] != 0)
+                        {
+                            if (tiles[nextBall] == 2)
+                            {
+                                backup[nextBall] = tiles[nextBall];
+                                tiles[nextBall] = 0;
+                            }
+                            bdif = new V(-bdif.X, -bdif.Y);
+                            continue;
+                        }
+                        
+                        break;
+                    }
+
+                    foreach (var kvp in backup)
+                        tiles[kvp.Key] = kvp.Value;
+
+                    var nball = ball + bdif;
+                    if (Math.Abs(nball.X - npaddle.X) <= 1)
+                    {
+                        chosedCmd = cmd;
+                        break;
+                    }
+                }
+                
+                Console.Out.WriteLine($"cmd={chosedCmd}");
+
+                // while (!Console.KeyAvailable)
+                // {
+                //     Thread.Sleep(10);
+                // }
+                // var key = Console.ReadKey();
+                Thread.Sleep(20);
+                computer.Input.Send(chosedCmd);
+                
+                
+                // if (key.Key == ConsoleKey.LeftArrow)
+                //     computer.Input.Send(-1);
+                // else if (key.Key == ConsoleKey.RightArrow)
+                //     computer.Input.Send(1);
+                // else
+                //     computer.Input.Send(0);
+            };
+            Console.ReadLine();
+            computer.Run().Wait();
+            WriteState();
         }
 
         static void Main12(string[] args)
@@ -22,13 +201,14 @@ namespace aoc
 //<x=9, y=-8, z=-3>
 //
 //".Trim().Split('\n').Select(x => x.Trim()).ToArray();
-            
-            
+
+
             var positions = lines.Select(line =>
-                {
-                    var split = line.Split(new[] {',', '<', '>', ' ', '=', 'x', 'y', 'z'}, StringSplitOptions.RemoveEmptyEntries);
-                    return new V3(int.Parse(split[0]), int.Parse(split[1]), int.Parse(split[2]));
-                }).ToArray();
+            {
+                var split = line.Split(new[] {',', '<', '>', ' ', '=', 'x', 'y', 'z'},
+                    StringSplitOptions.RemoveEmptyEntries);
+                return new V3(int.Parse(split[0]), int.Parse(split[1]), int.Parse(split[2]));
+            }).ToArray();
 
             var velocities = positions.Select(_ => new V3()).ToArray();
 
@@ -37,7 +217,7 @@ namespace aoc
             var z = Solve(p => p.Z);
 
             Console.Out.WriteLine($"{x} {y} {z} -> {Lcm(x, y, z)}");
-            
+
             int Solve(Func<V3, int> getCoord)
             {
                 Console.Out.WriteLine("START");
@@ -77,13 +257,14 @@ namespace aoc
                     ++sims;
                     if (velzero && ceq)
                         break;
-                    
+
                     if (sims % 1000 == 0)
                         Console.Out.WriteLine(sims);
                 }
 
                 return sims;
             }
+
 //
 //
 //
@@ -177,7 +358,7 @@ namespace aoc
             {
                 if (a > b)
                     a = a % b;
-                else 
+                else
                     b = b % a;
             }
 
@@ -199,8 +380,8 @@ namespace aoc
             };
             V pos = default;
             var dir = 0;
-            var dirs = new[] { new V(0, -1), new V(1, 0), new V(0, 1), new V(-1, 0) };
-            
+            var dirs = new[] {new V(0, -1), new V(1, 0), new V(0, 1), new V(-1, 0)};
+
             var state = 0;
             computer.Output = value =>
             {
@@ -222,13 +403,13 @@ namespace aoc
             };
 
             Send();
-            
+
             void Send()
             {
                 field.TryGetValue(pos, out var cur);
-                computer.Input.Send(cur);                
+                computer.Input.Send(cur);
             }
-            
+
             var task = computer.Run();
             if (!task.IsCompleted)
                 throw new Exception("Task didn't terminate");
@@ -321,12 +502,18 @@ namespace aoc
                     maxTarget = target;
                 }
             }
-            
+
             Console.Out.WriteLine($"{maxCount} at {maxTarget}");
-            
-            var rights = asteroids.Where(a => a != maxTarget && ((a - maxTarget).X > 0 || (a - maxTarget).X == 0 && (a - maxTarget).Y < 0)).Select(x => x - maxTarget).ToArray();
-            var lefts = asteroids.Where(a => a != maxTarget && ((a - maxTarget).X < 0 || (a - maxTarget).X == 0 && (a - maxTarget).Y > 0)).Select(x => x - maxTarget).ToArray();
-            
+
+            var rights = asteroids
+                .Where(a => a != maxTarget &&
+                            ((a - maxTarget).X > 0 || (a - maxTarget).X == 0 && (a - maxTarget).Y < 0))
+                .Select(x => x - maxTarget).ToArray();
+            var lefts = asteroids
+                .Where(a => a != maxTarget &&
+                            ((a - maxTarget).X < 0 || (a - maxTarget).X == 0 && (a - maxTarget).Y > 0))
+                .Select(x => x - maxTarget).ToArray();
+
             Array.Sort(rights, (y, x) =>
             {
                 var prod = V.XProd(x, y);
