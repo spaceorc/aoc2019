@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -13,9 +14,109 @@ namespace aoc
     {
         static void Main(string[] args)
         {
-            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+        }
 
-            //var line = "104,1125899906842624,99";
+        static void Main14(string[] args)
+        {
+            var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
+            
+//             var lines = @"
+// 157 ORE => 5 NZVS
+// 165 ORE => 6 DCFZ
+// 44 XJWVT, 5 KHKGT, 1 QDVJ, 29 NZVS, 9 GPVTF, 48 HKGWZ => 1 FUEL
+// 12 HKGWZ, 1 GPVTF, 8 PSHF => 9 QDVJ
+// 179 ORE => 7 PSHF
+// 177 ORE => 5 HKGWZ
+// 7 DCFZ, 7 PSHF => 2 XJWVT
+// 165 ORE => 2 GPVTF
+// 3 DCFZ, 7 NZVS, 5 HKGWZ, 10 PSHF => 8 KHKGT
+// ".Trim().Split('\n').Select(x => x.Trim()).ToArray();
+            
+            var reactions = new Dictionary<string, (long count, List<(string source, long count)> sources)>(); 
+                
+            foreach (var line in lines)
+            {
+                var split = line.Split(new[] {' ', ',', '=', '>'}, StringSplitOptions.RemoveEmptyEntries);
+                var target = split[split.Length - 1];
+                var targetCount = int.Parse(split[split.Length - 2]);
+                var sources = new List<(string source, long count)>();
+                for (int i = 0; i < split.Length - 2; i+=2)
+                    sources.Add((split[i + 1], int.Parse(split[i])));
+                
+                reactions.Add(target, (targetCount, sources));
+            }
+
+            long fuel = 1;
+            while (true)
+            {
+                var ore = Ore(fuel);
+                if (ore > 1000000000000)
+                    break;
+                fuel *= 2;
+            }
+
+            var min = fuel / 2;
+            var max = fuel;
+
+            while (min < max - 1)
+            {
+                var mid = (min + max) / 2;
+                var ore = Ore(mid);
+                if (ore > 1000000000000)
+                    max = mid;
+                else
+                    min = mid;
+            }
+            
+            Console.Out.WriteLine($"{min} <= {Ore(min)}");
+
+            long Ore(long fuel)
+            {
+                long ore;
+                var prods = reactions.Keys.ToDictionary(x => x, x => 0L);
+                prods["ORE"] = 0;
+                var useds = reactions.Keys.ToDictionary(x => x, x => 0L);
+                useds["ORE"] = 0;
+                var queue = new Queue<(string req, long count)>();
+                queue.Enqueue(("FUEL", fuel));
+                while (queue.Any())
+                {
+                    var cur = queue.Dequeue();
+                    var prod = prods[cur.req];
+                    var used = useds[cur.req];
+                    if (cur.count <= prod - used)
+                    {
+                        useds[cur.req] += cur.count;
+                        continue;
+                    }
+
+                    if (cur.req == "ORE")
+                    {
+                        prods[cur.req] += cur.count;
+                        useds[cur.req] += cur.count;
+                        continue;
+                    }
+
+                    var left = cur.count - (prod - used);
+                    var reaction = reactions[cur.req];
+                    var reactionsLeft = left / reaction.count + (left % reaction.count == 0 ? 0 : 1);
+                    prods[cur.req] += reactionsLeft * reaction.count;
+                    useds[cur.req] += cur.count;
+                    foreach (var src in reaction.sources)
+                    {
+                        var sreq = src.count * reactionsLeft;
+                        queue.Enqueue((src.source, sreq));
+                    }
+                }
+
+                ore = prods["ORE"];
+                return ore;
+            }
+        }
+
+        static void Main13(string[] args)
+        {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
 
             var program = line.Split(',').Select(long.Parse).ToArray();
             program[0] = 2;
