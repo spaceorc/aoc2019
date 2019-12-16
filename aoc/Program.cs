@@ -16,6 +16,264 @@ namespace aoc
         {
         }
 
+        static void Main16(string[] args)
+        {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt").Trim();
+            //var line = "80871224585914546619083218645595";
+
+            var input = line.Select(x => (long)(x - '0')).ToArray();
+            var skip = long.Parse(string.Join("", input.Take(7)));
+            var count = input.Length * 10_000 - skip;
+
+            var column = new long[101];
+            var nextColumn = new long[column.Length];
+            var last = new long[8];
+            
+            var index = input.Length - 1;
+            for (int i = 0; i < count; i++)
+            {
+                nextColumn[0] = input[index];
+                for (int k = 1; k < column.Length; k++)
+                    nextColumn[k] = nextColumn[k - 1] % 10 + column[k];
+
+                var tmp = column;
+                column = nextColumn;
+                nextColumn = tmp;
+
+                var lastIndex = count - i - 1;
+                if (lastIndex < last.Length)
+                    last[lastIndex] = column.Last();
+                
+                index--;
+                if (index < 0)
+                    index = input.Length - 1;
+            }
+            
+            Console.Out.WriteLine(string.Join("", last.Select(x => Math.Abs(x % 10))));
+
+            // int[] Pattern(int len, int num)
+            // {
+            //     var result = new int[len];
+            //     var pattern = new[] {0, 1, 0, -1};
+            //     var cur = 0;
+            //     var count = 1;
+            //     for (int i = 0; i < len; i++)
+            //     {
+            //         if (count >= num)
+            //         {
+            //             count = 0;
+            //             cur++;
+            //             if (cur == pattern.Length)
+            //                 cur = 0;
+            //         }
+            //         count++;
+            //         result[i] = pattern[cur];
+            //     }
+            //
+            //     return result;
+            // }
+
+        }
+
+        static void Main15(string[] args)
+        {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+
+            var program = line.Split(',').Select(long.Parse).ToArray();
+            var computer = new Computer("prog", program);
+            
+            var tiles = new Dictionary<V, char>();
+            tiles[default] = 'D';
+
+            V pos = default;
+            V nextPos = default;
+            
+            WriteState();
+
+            Console.ReadLine();
+            
+            computer.Output = value =>
+            {
+                switch (value)
+                {
+                    case 0:
+                        tiles[nextPos] = '#';
+                        break;
+                    case 1:
+                        tiles[pos] = pos == default ? 'S' : tiles[pos] == 'W' ? 'W' : '.';
+                        tiles[nextPos] = 'D';
+                        pos = nextPos;
+                        break;
+                    case 2:
+                        tiles[pos] = pos == default ? 'S' : tiles[pos] == 'W' ? 'W' : '.';
+                        tiles[nextPos] = 'W';
+                        pos = nextPos;
+                        break;
+                    default:
+                        throw new Exception($"WTF: {value}");
+                }
+            }; 
+            computer.Input.OnWait += () =>
+            {
+                WriteState();
+                //Console.ReadLine();
+                Thread.Sleep(20);
+                
+                var difs = new[] {default, new V(0, -1), new V(0, 1), new V(-1, 0), new V(1, 0)};
+                for (int cmd = 1; cmd <= 4; cmd++)
+                {
+                    nextPos = pos + difs[cmd];
+                    if (!tiles.TryGetValue(nextPos, out _))
+                    {
+                        computer.Input.Send(cmd);
+                        return;
+                    }
+                }
+                
+                var queue = new Queue<V>();
+                queue.Enqueue(pos);
+                var used = new Dictionary<V, V> {{pos, pos}};
+
+                while (queue.Count > 0)
+                {
+                    var cur = queue.Dequeue();
+                    if (!tiles.TryGetValue(cur, out _))
+                    {
+                        while (true)
+                        {
+                            var prev = used[cur];
+                            if (prev == pos)
+                            {
+                                var cmd = Array.IndexOf(difs, cur - pos);
+                                nextPos = cur;
+                                computer.Input.Send(cmd);
+                                return;
+                            }
+
+                            cur = prev;
+                        }
+                    }
+
+                    for (int cmd = 1; cmd <= 4; cmd++)
+                    {
+                        var next = cur + difs[cmd];
+                        if (used.ContainsKey(next))
+                            continue;
+                        if (tiles.TryGetValue(next, out var nc))
+                        {
+                            if (nc == '#')
+                                continue;
+                        }
+                        
+                        used.Add(next, cur);
+                        queue.Enqueue(next);
+                    }
+                }
+                
+                throw new Exception("WTF! Couldn't find path");
+
+
+
+
+                // Console.WriteLine("Waiting command...");
+                // while (true)
+                // {
+                //     while (!Console.KeyAvailable)
+                //     {
+                //         Thread.Sleep(10);
+                //     }
+                //
+                //     var key = Console.ReadKey(true);
+                //
+                //     if (key.Key == ConsoleKey.LeftArrow)
+                //     {
+                //         computer.Input.Send(3);
+                //         nextPos = pos + new V(-1, 0);
+                //     }
+                //     else if (key.Key == ConsoleKey.RightArrow)
+                //     {
+                //         computer.Input.Send(4);
+                //         nextPos = pos + new V(1, 0);
+                //     }
+                //     else if (key.Key == ConsoleKey.UpArrow)
+                //     {
+                //         computer.Input.Send(1);
+                //         nextPos = pos + new V(0, -1);
+                //     }
+                //     else if (key.Key == ConsoleKey.DownArrow)
+                //     {
+                //         computer.Input.Send(2);
+                //         nextPos = pos + new V(0, 1);
+                //     }
+                //     else
+                //         continue;
+                //     break;
+                // }
+            };
+
+            try
+            {
+                computer.Run().Wait();
+            }
+            catch (Exception e)
+            {
+            }
+            
+            WriteState();
+
+            var target = tiles.Single(kvp => kvp.Value == 'W').Key;
+            {
+                var difs = new[] {default(V), new V(0, -1), new V(0, 1), new V(-1, 0), new V(1, 0)};
+                var queue = new Queue<V>();
+                queue.Enqueue(target);
+                var used = new Dictionary<V, int> {{target, 0}};
+
+                while (queue.Count > 0)
+                {
+                    var cur = queue.Dequeue();
+                    for (int cmd = 1; cmd <= 4; cmd++)
+                    {
+                        var next = cur + difs[cmd];
+                        if (used.ContainsKey(next))
+                            continue;
+                        if (tiles[next] == '#')
+                            continue;
+
+                        used.Add(next, used[cur] + 1);
+                        queue.Enqueue(next);
+                    }
+                }
+
+                Console.Out.WriteLine($"max = {used.Values.Max()}");
+            }
+
+
+            void WriteState()
+            {
+                Console.Clear();
+                Console.WriteLine("------------------");
+                var minx = tiles.Keys.Min(x => x.X);
+                var miny = tiles.Keys.Min(x => x.Y);
+                var maxx = tiles.Keys.Max(x => x.X);
+                var maxy = tiles.Keys.Max(x => x.Y);
+
+                for (int y = miny; y <= maxy; y++)
+                {
+                    for (int x = minx; x <= maxx; x++)
+                    {
+                        if (!tiles.TryGetValue(new V(x, y), out var ch))
+                            Console.Write(' ');
+                        else
+                            Console.Write(ch);
+                    }
+
+                    Console.WriteLine();
+                }
+            }
+
+            
+        }
+
         static void Main14(string[] args)
         {
             var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
