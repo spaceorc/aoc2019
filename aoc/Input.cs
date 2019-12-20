@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace aoc
@@ -11,30 +12,38 @@ namespace aoc
 
         public event Action OnWait;
 
-        public void Send(long value)
+        public void Send(params long[] values)
         {
             if (tcs != null)
             {
                 var localTcs = tcs;
                 tcs = null;
-                localTcs.SetResult(value);
+                foreach (var next in values.Skip(1))
+                    data.Enqueue(next);
+                localTcs.SetResult(values[0]);
                 return;
             }
 
-            data.Enqueue(value);
+            foreach (var next in values)
+                data.Enqueue(next);
         }
 
         public async Task<long> Wait()
         {
-            OnWait?.Invoke();
             if (data.Count > 0)
                 return data.Dequeue();
 
+            OnWait?.Invoke();
+            
+            if (data.Count > 0)
+                return data.Dequeue();
+            
             if (tcs != null)
                 throw new InvalidOperationException();
 
             tcs = new TaskCompletionSource<long>();
-            return await tcs.Task;
+            var result = await tcs.Task;
+            return result;
         }
     }
 }

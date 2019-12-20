@@ -32,7 +32,7 @@ namespace aoc
 
         public void RedirectOutput(Input input)
         {
-            Output = input.Send;
+            Output = v => input.Send(v);
         }
 
         public async Task Run()

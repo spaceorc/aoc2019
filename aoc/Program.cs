@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
@@ -14,6 +17,286 @@ namespace aoc
     {
         static void Main(string[] args)
         {
+            var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
+
+//             var lines = @"
+// #############
+// #g#f.D#..h#l#
+// #F###e#E###.#
+// #dCba@#@BcIJ#
+// #############
+// #nK.L@#@G...#
+// #M###N#H###.#
+// #o#m..#i#jk.#
+// #############
+// ".Trim().Split('\n').Select(x => x.Trim()).ToArray();
+            
+            var points = new Dictionary<char, V>();
+            var starts = 0;
+            for (int y = 0; y < lines.Length; y++)
+            for (int x = 0; x < lines[y].Length; x++)
+            {
+                var v = new V(x, y);
+                if (lines[y][x] == '@')
+                {
+                    points[(char)('0' + starts++)] = v;
+                }
+                else if (lines[y][x] != '#' && lines[y][x] != '.')
+                    points[lines[y][x]] = v;
+            }
+
+            var sw = Stopwatch.StartNew();
+            var graph = BuildGraph();
+
+            var queue = new Heap();
+            var init = (ulong)(((1 << 26) - 1) & ~((1 << (graph.Keys.Where(k => k < 30).Max() - 3)) - 1));
+            init |= 1ul << 32;
+            init |= 2ul << (32 + 6);
+            init |= 3ul << (32 + 6 + 6);
+            
+            queue.Add(init);
+            var used = new Dictionary<ulong, int>();
+            used.Add(init, 0);
+
+            while (queue.Count > 0)
+            {
+                var curQ = queue.DeleteMin();
+                var cur = curQ & (1ul << (32 + 18)) - 1;
+                var clen = used[cur];
+                if (clen != (int) (curQ >> (32 + 18)))
+                    continue;
+
+                if ((cur & ((1 << 26) - 1)) == (1 << 26) - 1)
+                {
+                    Console.Out.WriteLine(sw.Elapsed);
+                    Console.Out.WriteLine(clen);
+                    break;
+                }
+
+                var cp0 = (cur >> 26) & 0b111111;
+                var others = graph[(int)cp0];
+                foreach (var other in others)
+                {
+                    if (other.next >= 30)
+                    {
+                        if ((cur & (1ul << (other.next - 30))) == 0)
+                            continue;
+                    }
+
+                    var next = (ulong)other.next << 26
+                        | cur & 0b111111_111111_111111_000000_11111111111111111111111111;
+
+                    if (other.next < 30)
+                        next |= 1ul << (other.next - 4);
+
+                    var nlen = clen + other.len;
+                    if (used.TryGetValue(next, out var plen) && plen <= nlen)
+                        continue;
+                    
+                    if (nlen >= 16384)
+                        throw new Exception($"WTF {nlen}");
+
+                    used[next] = nlen;
+                    var value = (ulong)nlen << (32 + 18) | next;
+                    queue.Add(value);
+                }
+
+                var cp1 = (cur >> 26 + 6) & 0b111111;
+                others = graph[(int)cp1];
+                foreach (var other in others)
+                {
+                    if (other.next >= 30)
+                    {
+                        if ((cur & (1ul << (other.next - 30))) == 0)
+                            continue;
+                    }
+
+                    var next = (ulong)other.next << (26 + 6)
+                               | cur & 0b111111_111111_000000_111111_11111111111111111111111111;
+
+                    if (other.next < 30)
+                        next |= 1ul << (other.next - 4);
+
+                    var nlen = clen + other.len;
+                    if (used.TryGetValue(next, out var plen) && plen <= nlen)
+                        continue;
+
+                    if (nlen >= 16384)
+                        throw new Exception($"WTF {nlen}");
+                    
+                    used[next] = nlen;
+                    var value = (ulong)nlen << (32 + 18) | next;
+                    queue.Add(value);
+                }
+                
+                var cp2 = (cur >> 26 + 6 + 6) & 0b111111;
+                others = graph[(int)cp2];
+                foreach (var other in others)
+                {
+                    if (other.next >= 30)
+                    {
+                        if ((cur & (1ul << (other.next - 30))) == 0)
+                            continue;
+                    }
+
+                    var next = (ulong)other.next << (26 + 6 + 6)
+                               | cur & 0b111111_000000_111111_111111_11111111111111111111111111;
+
+                    if (other.next < 30)
+                        next |= 1ul << (other.next - 4);
+
+                    var nlen = clen + other.len;
+                    if (used.TryGetValue(next, out var plen) && plen <= nlen)
+                        continue;
+
+                    if (nlen >= 16384)
+                        throw new Exception($"WTF {nlen}");
+                    
+                    used[next] = nlen;
+                    var value = (ulong)nlen << (32 + 18) | next;
+                    queue.Add(value);
+                }
+                
+                var cp3 = (cur >> 26 + 6 + 6 + 6) & 0b111111;
+                others = graph[(int)cp3];
+                foreach (var other in others)
+                {
+                    if (other.next >= 30)
+                    {
+                        if ((cur & (1ul << (other.next - 30))) == 0)
+                            continue;
+                    }
+
+                    var next = (ulong)other.next << (26 + 6 + 6 + 6)
+                               | cur & 0b000000_111111_111111_111111_11111111111111111111111111;
+
+                    if (other.next < 30)
+                        next |= 1ul << (other.next - 4);
+
+                    var nlen = clen + other.len;
+                    if (used.TryGetValue(next, out var plen) && plen <= nlen)
+                        continue;
+
+                    if (nlen >= 16384)
+                        throw new Exception($"WTF {nlen}");
+                    
+                    used[next] = nlen;
+                    var value = (ulong)nlen << (32 + 18) | next;
+                    queue.Add(value);
+                }
+            }
+
+            Dictionary<int, List<(int next, int len)>> BuildGraph()
+            {
+                var positions = new[]{'0', '1', '2', '3'} 
+                    .Concat(Enumerable.Range(0, 26).Select(x => (char) ('a' + x)))
+                    .Concat(Enumerable.Range(0, 26).Select(x => (char) ('A' + x)))
+                    .Select((x, i) => new {x, i})
+                    .ToDictionary(x => x.x, x => x.i);
+
+                var graph = new Dictionary<int, List<(int next, int len)>>();
+                var difs = new[] {new V(0, -1), new V(0, 1), new V(-1, 0), new V(1, 0)};
+                foreach (var p in points)
+                {
+                    var pp = positions[p.Key];
+                    var edges = new List<(int other, int len)>();
+                    graph.Add(pp, edges);
+                    var queue = new Queue<V>();
+                    queue.Enqueue(p.Value);
+                    var used = new Dictionary<V, int> {{p.Value, 0}};
+                    while (queue.Count > 0)
+                    {
+                        var cur = queue.Dequeue();
+
+                        foreach (var dif in difs)
+                        {
+                            var next = cur + dif;
+                            if (next.X < 0 || next.X >= lines[0].Length
+                                           || next.Y < 0 || next.Y >= lines.Length)
+                                continue;
+
+                            var np = lines[next.Y][next.X];
+                            if (np == '#')
+                                continue;
+
+                            if (used.ContainsKey(next))
+                                continue;
+
+                            var nlen = used[cur] + 1;
+                            used.Add(next, nlen);
+
+                            if (np != '.' && np != '@')
+                                edges.Add((positions[np], nlen));
+                            else
+                                queue.Enqueue(next);
+                        }
+                    }
+                }
+
+                return graph;
+            }
+        }
+
+        static void Main17(string[] args)
+        {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+
+            var program = line.Split(',').Select(long.Parse).ToArray();
+            program[0] = 2;
+            var computer = new Computer("prog", program);
+            //
+            // var tiles = new Dictionary<V, char>();
+            // tiles[default] = 'D';
+
+            //WriteState();
+
+            //Console.ReadLine();
+
+            //V pos = default; 
+            computer.Output = value =>
+            {
+                // if (value == 10)
+                //     pos += new V(-pos.X, 1);
+                // else
+                // {
+                //     tiles[pos] = (char) (int) value;
+                //     pos += new V(1, 0);
+                // }
+                Console.Out.Write((char)(int)value);
+            };
+
+            computer.Input.OnWait += () =>
+            {
+                Console.Write("> ");
+                var inp = (Console.ReadLine() + '\n').Select(x => (long)x).ToArray();
+                computer.Input.Send(inp);
+            };
+
+            var task = computer.Run();
+            if (task.IsCompleted)
+                task.Wait();
+            else
+                throw new Exception("Didn't complete!");
+
+            Console.Out.WriteLine(computer.Outputs.Last());
+            
+            //
+            // var res = 0;
+            // foreach (var v in tiles.Keys)
+            // {
+            //     tiles.TryGetValue(v, out var o);
+            //     tiles.TryGetValue(v + new V(1, 0), out var o1);
+            //     tiles.TryGetValue(v + new V(-1, 0), out var o2);
+            //     tiles.TryGetValue(v + new V(0, 1), out var o3);
+            //     tiles.TryGetValue(v + new V(0, -1), out var o4);
+            //     if (o == '#' && o1 == '#' && o2 == '#' && o3 == '#' && o4 == '#')
+            //     {
+            //         res += v.X * v.Y;
+            //         Console.Out.WriteLine($"{v} {v.X * v.Y} {res}");
+            //     }
+            // }
+            //
+            // Console.Out.WriteLine(res);
         }
 
         static void Main16(string[] args)
