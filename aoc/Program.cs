@@ -1,21 +1,328 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Runtime.InteropServices.WindowsRuntime;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Xml;
+using Experiments;
 
 namespace aoc
 {
     class Program
     {
         static void Main(string[] args)
+        {
+        }
+
+        static void Main21(string[] args)
+        {
+            //
+            // bool Jump(bool a, bool b, bool c, bool d)
+            // {
+            //     var t = !a;
+            //     t = !t;
+            //     t = b && t;
+            //     t = c && t;
+            //     t = !t;
+            //     t = d && t;
+            //     t = !t;
+            //     var j = !t;
+            //     return j;
+            // }
+            //
+            // Console.Out.WriteLine(Jump(true, false, true, true));
+            //
+            // return;
+
+
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+
+            var program = line.Split(',').Select(long.Parse).ToArray();
+
+            while (true)
+            {
+                var computer = new Computer("prog", program)
+                {
+                    Output = value => Console.Out.Write((char) (int) value)
+                };
+
+                computer.Input.OnWait += () =>
+                {
+                    Console.Write(">> Edit prog.txt and press `Enter`");
+                    Console.ReadLine();
+                    var input = File.ReadAllText(FileHelper.PatchFilename("prog.txt"));
+                    input = input.Replace("\r", "").Trim().Split('#')[0].Trim() + "\nRUN\n";
+                    
+                    computer.Input.Send(input.Select(x => (long)x).ToArray());
+                };
+
+                var task = computer.Run();
+                if (task.IsCompleted)
+                    task.Wait();
+                else
+                    throw new Exception("Didn't complete!");
+                Console.Out.WriteLine(computer.Outputs.Last());
+            }
+
+            //
+            // var res = 0;
+            // foreach (var v in tiles.Keys)
+            // {
+            //     tiles.TryGetValue(v, out var o);
+            //     tiles.TryGetValue(v + new V(1, 0), out var o1);
+            //     tiles.TryGetValue(v + new V(-1, 0), out var o2);
+            //     tiles.TryGetValue(v + new V(0, 1), out var o3);
+            //     tiles.TryGetValue(v + new V(0, -1), out var o4);
+            //     if (o == '#' && o1 == '#' && o2 == '#' && o3 == '#' && o4 == '#')
+            //     {
+            //         res += v.X * v.Y;
+            //         Console.Out.WriteLine($"{v} {v.X * v.Y} {res}");
+            //     }
+            // }
+            //
+            // Console.Out.WriteLine(res);
+        }
+
+        static void Main20(string[] args)
+        {
+            var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
+
+//             var lines = @"
+//              Z L X W       C                 
+//              Z P Q B       K                 
+//   ###########.#.#.#.#######.###############  
+//   #...#.......#.#.......#.#.......#.#.#...#  
+//   ###.#.#.#.#.#.#.#.###.#.#.#######.#.#.###  
+//   #.#...#.#.#...#.#.#...#...#...#.#.......#  
+//   #.###.#######.###.###.#.###.###.#.#######  
+//   #...#.......#.#...#...#.............#...#  
+//   #.#########.#######.#.#######.#######.###  
+//   #...#.#    F       R I       Z    #.#.#.#  
+//   #.###.#    D       E C       H    #.#.#.#  
+//   #.#...#                           #...#.#  
+//   #.###.#                           #.###.#  
+//   #.#....OA                       WB..#.#..ZH
+//   #.###.#                           #.#.#.#  
+// CJ......#                           #.....#  
+//   #######                           #######  
+//   #.#....CK                         #......IC
+//   #.###.#                           #.###.#  
+//   #.....#                           #...#.#  
+//   ###.###                           #.#.#.#  
+// XF....#.#                         RF..#.#.#  
+//   #####.#                           #######  
+//   #......CJ                       NM..#...#  
+//   ###.#.#                           #.###.#  
+// RE....#.#                           #......RF
+//   ###.###        X   X       L      #.#.#.#  
+//   #.....#        F   Q       P      #.#.#.#  
+//   ###.###########.###.#######.#########.###  
+//   #.....#...#.....#.......#...#.....#.#...#  
+//   #####.#.###.#######.#######.###.###.#.#.#  
+//   #.......#.......#.#.#.#.#...#...#...#.#.#  
+//   #####.###.#####.#.#.#.#.###.###.#.###.###  
+//   #.......#.....#.#...#...............#...#  
+//   #############.#.#.###.###################  
+//                A O F   N                     
+//                A A D   M                     
+// ".Split('\n', StringSplitOptions.RemoveEmptyEntries).ToArray();
+
+
+            var tiles = new Dictionary<V, char>();
+            for (int y = 0; y < lines.Length; y++)
+            for (int x = 0; x < lines[0].Length; x++)
+            {
+                tiles[new V(x, y)] = lines[y][x];
+            }
+
+            var portals = new Dictionary<string, List<V>>();
+            
+            List<V> Portal(string s)
+            {
+                if (!portals.TryGetValue(s, out var p))
+                    portals.Add(s, p = new List<V>());
+                return p;
+            }
+
+            foreach (var tile in tiles)
+            {
+                if (!char.IsLetter(tile.Value))
+                    continue;
+
+                if (tiles.TryGetValue(tile.Key + new V(1, 0), out var next) && char.IsLetter(next))
+                {
+                    if (tiles.TryGetValue(tile.Key + new V(2, 0), out var next2) && next2 == '.')
+                    {
+                        Portal($"{tile.Value}{next}").Add(tile.Key + new V(2, 0));
+                    }
+                    else if (tiles.TryGetValue(tile.Key + new V(-1, 0), out next2) && next2 == '.')
+                    {
+                        Portal($"{tile.Value}{next}").Add(tile.Key + new V(-1, 0));
+                    }
+                }
+                else if (tiles.TryGetValue(tile.Key + new V(0, 1), out next) && char.IsLetter(next))
+                {
+                    if (tiles.TryGetValue(tile.Key + new V(0, 2), out var next2) && next2 == '.')
+                    {
+                        Portal($"{tile.Value}{next}").Add(tile.Key + new V(0, 2));
+                    }
+                    else if (tiles.TryGetValue(tile.Key + new V(0, -1), out next2) && next2 == '.')
+                    {
+                        Portal($"{tile.Value}{next}").Add(tile.Key + new V(0, -1));
+                    }
+                }
+            }
+
+            var maxX = portals.SelectMany(x => x.Value).Max(x => x.X);
+            var minX = portals.SelectMany(x => x.Value).Min(x => x.X);
+            var minY = portals.SelectMany(x => x.Value).Max(x => x.Y);
+            var maxY = portals.SelectMany(x => x.Value).Min(x => x.Y);
+
+            bool IsOuter(V v)
+            {
+                return v.X == minX || v.X == maxX || v.Y == minY || v.Y == maxY;
+            }
+
+            var portalShifts = new Dictionary<V, (V next, int shift)>();
+            foreach (var portal in portals)
+            {
+                if (portal.Value.Count == 2)
+                {
+                    portalShifts[portal.Value[0]] = (portal.Value[1], IsOuter(portal.Value[0]) ? -1 : 1);
+                    portalShifts[portal.Value[1]] = (portal.Value[0], IsOuter(portal.Value[1]) ? -1 : 1);
+                }
+            }
+
+            var enter = (portals["AA"].Single(), 0);
+            var exit = (portals["ZZ"].Single(), 0);
+
+            var queue = new Queue<(V pos, int level)>();
+            var used = new Dictionary<(V pos, int level), int>();
+            used.Add(enter, 0);
+            queue.Enqueue(enter);
+            var difs = new[] {new V(0, -1), new V(0, 1), new V(-1, 0), new V(1, 0)};
+            while (queue.Count > 0)
+            {
+                var cur = queue.Dequeue();
+                if (cur == exit)
+                {
+                    Console.Out.WriteLine(used[cur]);
+                    return;
+                }
+
+                foreach (var dif in difs)
+                {
+                    (V pos, int level) next = (cur.pos + dif, cur.level);
+                    if (tiles.TryGetValue(next.pos, out var n))
+                    {
+                        if (n != '.')
+                            continue;
+                        if (used.ContainsKey(next))
+                            continue;
+                        used.Add(next, used[cur] + 1);
+                        queue.Enqueue(next);
+                    }
+                }
+
+                if (portalShifts.TryGetValue(cur.pos, out var portalShift))
+                {
+                    (V pos, int level) portalNext = (portalShift.next, cur.level + portalShift.shift);
+                    if (portalNext.level < 0)
+                        continue;
+                    if (used.ContainsKey(portalNext))
+                        continue;
+                    used.Add(portalNext, used[cur] + 1);
+                    queue.Enqueue(portalNext);
+                }
+            }
+
+
+        }
+
+        static void Main19(string[] args)
+        {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+
+            var program = line.Split(',').Select(long.Parse).ToArray();
+            //
+            //
+            // for (int x = 0; x < 10000; x++)
+            // {
+            //     var computer = new Computer("prog", program);
+            //     computer.Input.Send(x);
+            //     computer.Input.Send(5000);
+            //     computer.Output = v =>
+            //     {
+            //         if (v != 0)
+            //             Console.Out.WriteLine(x);
+            //     };
+            //     computer.Run().Wait();
+            // }
+            //
+            // return;
+
+            var min = 0;
+            var max = 10000;
+
+            V result = default;
+            
+            while (min < max - 1)
+            {
+                var mid = (min + max) / 2;
+                var res = Test(mid); 
+                if (res == null)
+                    min = mid;
+                else
+                {
+                    max = mid;
+                    result = res.Value;
+                }
+            }
+
+            Console.Out.WriteLine(result);
+            Console.Out.WriteLine(result.X * 10000 + result.Y);
+
+            V? Test(int firstRow)
+            {
+                var min = firstRow * 3700 / 5000;
+                var max = 10100;
+
+                if (!IsSet(new V(min, firstRow)))
+                    throw new Exception($"WTF??? min {firstRow}");
+                if (IsSet(new V(max, firstRow)))
+                    throw new Exception($"WTF??? max {firstRow}");
+
+                while (min < max - 1)
+                {
+                    var mid = (min + max) / 2;
+                    if (IsSet(new V(mid, firstRow)))
+                        min = mid;
+                    else
+                        max = mid;
+                }
+
+                if (IsSet(new V(min - 99, firstRow + 99)))
+                    return new V(min - 99, firstRow);
+
+                return null;
+            }
+
+            bool IsSet(V target)
+            {
+                var computer = new Computer("prog", program);
+                var result = false;
+                computer.Input.Send(target.X);
+                computer.Input.Send(target.Y);
+                computer.Output = v => result = v == 1;
+                computer.Run().Wait();
+                return result;
+            }
+
+            
+        }
+
+        static void Main18(string[] args)
         {
             var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
 
@@ -30,7 +337,7 @@ namespace aoc
 // #o#m..#i#jk.#
 // #############
 // ".Trim().Split('\n').Select(x => x.Trim()).ToArray();
-            
+
             var points = new Dictionary<char, V>();
             var starts = 0;
             for (int y = 0; y < lines.Length; y++)
@@ -39,7 +346,7 @@ namespace aoc
                 var v = new V(x, y);
                 if (lines[y][x] == '@')
                 {
-                    points[(char)('0' + starts++)] = v;
+                    points[(char) ('0' + starts++)] = v;
                 }
                 else if (lines[y][x] != '#' && lines[y][x] != '.')
                     points[lines[y][x]] = v;
@@ -49,11 +356,11 @@ namespace aoc
             var graph = BuildGraph();
 
             var queue = new Heap();
-            var init = (ulong)(((1 << 26) - 1) & ~((1 << (graph.Keys.Where(k => k < 30).Max() - 3)) - 1));
+            var init = (ulong) (((1 << 26) - 1) & ~((1 << (graph.Keys.Where(k => k < 30).Max() - 3)) - 1));
             init |= 1ul << 32;
             init |= 2ul << (32 + 6);
             init |= 3ul << (32 + 6 + 6);
-            
+
             queue.Add(init);
             var used = new Dictionary<ulong, int>();
             used.Add(init, 0);
@@ -74,7 +381,7 @@ namespace aoc
                 }
 
                 var cp0 = (cur >> 26) & 0b111111;
-                var others = graph[(int)cp0];
+                var others = graph[(int) cp0];
                 foreach (var other in others)
                 {
                     if (other.next >= 30)
@@ -83,8 +390,8 @@ namespace aoc
                             continue;
                     }
 
-                    var next = (ulong)other.next << 26
-                        | cur & 0b111111_111111_111111_000000_11111111111111111111111111;
+                    var next = (ulong) other.next << 26
+                               | cur & 0b111111_111111_111111_000000_11111111111111111111111111;
 
                     if (other.next < 30)
                         next |= 1ul << (other.next - 4);
@@ -92,17 +399,17 @@ namespace aoc
                     var nlen = clen + other.len;
                     if (used.TryGetValue(next, out var plen) && plen <= nlen)
                         continue;
-                    
+
                     if (nlen >= 16384)
                         throw new Exception($"WTF {nlen}");
 
                     used[next] = nlen;
-                    var value = (ulong)nlen << (32 + 18) | next;
+                    var value = (ulong) nlen << (32 + 18) | next;
                     queue.Add(value);
                 }
 
                 var cp1 = (cur >> 26 + 6) & 0b111111;
-                others = graph[(int)cp1];
+                others = graph[(int) cp1];
                 foreach (var other in others)
                 {
                     if (other.next >= 30)
@@ -111,7 +418,7 @@ namespace aoc
                             continue;
                     }
 
-                    var next = (ulong)other.next << (26 + 6)
+                    var next = (ulong) other.next << (26 + 6)
                                | cur & 0b111111_111111_000000_111111_11111111111111111111111111;
 
                     if (other.next < 30)
@@ -123,14 +430,14 @@ namespace aoc
 
                     if (nlen >= 16384)
                         throw new Exception($"WTF {nlen}");
-                    
+
                     used[next] = nlen;
-                    var value = (ulong)nlen << (32 + 18) | next;
+                    var value = (ulong) nlen << (32 + 18) | next;
                     queue.Add(value);
                 }
-                
+
                 var cp2 = (cur >> 26 + 6 + 6) & 0b111111;
-                others = graph[(int)cp2];
+                others = graph[(int) cp2];
                 foreach (var other in others)
                 {
                     if (other.next >= 30)
@@ -139,7 +446,7 @@ namespace aoc
                             continue;
                     }
 
-                    var next = (ulong)other.next << (26 + 6 + 6)
+                    var next = (ulong) other.next << (26 + 6 + 6)
                                | cur & 0b111111_000000_111111_111111_11111111111111111111111111;
 
                     if (other.next < 30)
@@ -151,14 +458,14 @@ namespace aoc
 
                     if (nlen >= 16384)
                         throw new Exception($"WTF {nlen}");
-                    
+
                     used[next] = nlen;
-                    var value = (ulong)nlen << (32 + 18) | next;
+                    var value = (ulong) nlen << (32 + 18) | next;
                     queue.Add(value);
                 }
-                
+
                 var cp3 = (cur >> 26 + 6 + 6 + 6) & 0b111111;
-                others = graph[(int)cp3];
+                others = graph[(int) cp3];
                 foreach (var other in others)
                 {
                     if (other.next >= 30)
@@ -167,7 +474,7 @@ namespace aoc
                             continue;
                     }
 
-                    var next = (ulong)other.next << (26 + 6 + 6 + 6)
+                    var next = (ulong) other.next << (26 + 6 + 6 + 6)
                                | cur & 0b000000_111111_111111_111111_11111111111111111111111111;
 
                     if (other.next < 30)
@@ -179,16 +486,16 @@ namespace aoc
 
                     if (nlen >= 16384)
                         throw new Exception($"WTF {nlen}");
-                    
+
                     used[next] = nlen;
-                    var value = (ulong)nlen << (32 + 18) | next;
+                    var value = (ulong) nlen << (32 + 18) | next;
                     queue.Add(value);
                 }
             }
 
             Dictionary<int, List<(int next, int len)>> BuildGraph()
             {
-                var positions = new[]{'0', '1', '2', '3'} 
+                var positions = new[] {'0', '1', '2', '3'}
                     .Concat(Enumerable.Range(0, 26).Select(x => (char) ('a' + x)))
                     .Concat(Enumerable.Range(0, 26).Select(x => (char) ('A' + x)))
                     .Select((x, i) => new {x, i})
@@ -262,13 +569,13 @@ namespace aoc
                 //     tiles[pos] = (char) (int) value;
                 //     pos += new V(1, 0);
                 // }
-                Console.Out.Write((char)(int)value);
+                Console.Out.Write((char) (int) value);
             };
 
             computer.Input.OnWait += () =>
             {
                 Console.Write("> ");
-                var inp = (Console.ReadLine() + '\n').Select(x => (long)x).ToArray();
+                var inp = (Console.ReadLine() + '\n').Select(x => (long) x).ToArray();
                 computer.Input.Send(inp);
             };
 
@@ -279,7 +586,7 @@ namespace aoc
                 throw new Exception("Didn't complete!");
 
             Console.Out.WriteLine(computer.Outputs.Last());
-            
+
             //
             // var res = 0;
             // foreach (var v in tiles.Keys)
@@ -304,14 +611,14 @@ namespace aoc
             var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt").Trim();
             //var line = "80871224585914546619083218645595";
 
-            var input = line.Select(x => (long)(x - '0')).ToArray();
+            var input = line.Select(x => (long) (x - '0')).ToArray();
             var skip = long.Parse(string.Join("", input.Take(7)));
             var count = input.Length * 10_000 - skip;
 
             var column = new long[101];
             var nextColumn = new long[column.Length];
             var last = new long[8];
-            
+
             var index = input.Length - 1;
             for (int i = 0; i < count; i++)
             {
@@ -326,12 +633,12 @@ namespace aoc
                 var lastIndex = count - i - 1;
                 if (lastIndex < last.Length)
                     last[lastIndex] = column.Last();
-                
+
                 index--;
                 if (index < 0)
                     index = input.Length - 1;
             }
-            
+
             Console.Out.WriteLine(string.Join("", last.Select(x => Math.Abs(x % 10))));
 
             // int[] Pattern(int len, int num)
@@ -355,7 +662,6 @@ namespace aoc
             //
             //     return result;
             // }
-
         }
 
         static void Main15(string[] args)
@@ -364,17 +670,17 @@ namespace aoc
 
             var program = line.Split(',').Select(long.Parse).ToArray();
             var computer = new Computer("prog", program);
-            
+
             var tiles = new Dictionary<V, char>();
             tiles[default] = 'D';
 
             V pos = default;
             V nextPos = default;
-            
+
             WriteState();
 
             Console.ReadLine();
-            
+
             computer.Output = value =>
             {
                 switch (value)
@@ -395,13 +701,13 @@ namespace aoc
                     default:
                         throw new Exception($"WTF: {value}");
                 }
-            }; 
+            };
             computer.Input.OnWait += () =>
             {
                 WriteState();
                 //Console.ReadLine();
                 Thread.Sleep(20);
-                
+
                 var difs = new[] {default, new V(0, -1), new V(0, 1), new V(-1, 0), new V(1, 0)};
                 for (int cmd = 1; cmd <= 4; cmd++)
                 {
@@ -412,7 +718,7 @@ namespace aoc
                         return;
                     }
                 }
-                
+
                 var queue = new Queue<V>();
                 queue.Enqueue(pos);
                 var used = new Dictionary<V, V> {{pos, pos}};
@@ -447,15 +753,13 @@ namespace aoc
                             if (nc == '#')
                                 continue;
                         }
-                        
+
                         used.Add(next, cur);
                         queue.Enqueue(next);
                     }
                 }
-                
+
                 throw new Exception("WTF! Couldn't find path");
-
-
 
 
                 // Console.WriteLine("Waiting command...");
@@ -501,7 +805,7 @@ namespace aoc
             catch (Exception e)
             {
             }
-            
+
             WriteState();
 
             var target = tiles.Single(kvp => kvp.Value == 'W').Key;
@@ -553,14 +857,12 @@ namespace aoc
                     Console.WriteLine();
                 }
             }
-
-            
         }
 
         static void Main14(string[] args)
         {
             var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
-            
+
 //             var lines = @"
 // 157 ORE => 5 NZVS
 // 165 ORE => 6 DCFZ
@@ -572,18 +874,18 @@ namespace aoc
 // 165 ORE => 2 GPVTF
 // 3 DCFZ, 7 NZVS, 5 HKGWZ, 10 PSHF => 8 KHKGT
 // ".Trim().Split('\n').Select(x => x.Trim()).ToArray();
-            
-            var reactions = new Dictionary<string, (long count, List<(string source, long count)> sources)>(); 
-                
+
+            var reactions = new Dictionary<string, (long count, List<(string source, long count)> sources)>();
+
             foreach (var line in lines)
             {
                 var split = line.Split(new[] {' ', ',', '=', '>'}, StringSplitOptions.RemoveEmptyEntries);
                 var target = split[split.Length - 1];
                 var targetCount = int.Parse(split[split.Length - 2]);
                 var sources = new List<(string source, long count)>();
-                for (int i = 0; i < split.Length - 2; i+=2)
+                for (int i = 0; i < split.Length - 2; i += 2)
                     sources.Add((split[i + 1], int.Parse(split[i])));
-                
+
                 reactions.Add(target, (targetCount, sources));
             }
 
@@ -608,7 +910,7 @@ namespace aoc
                 else
                     min = mid;
             }
-            
+
             Console.Out.WriteLine($"{min} <= {Ore(min)}");
 
             long Ore(long fuel)
@@ -739,6 +1041,7 @@ namespace aoc
 
                     Console.WriteLine();
                 }
+
                 Console.WriteLine(score);
             }
 
@@ -749,13 +1052,13 @@ namespace aoc
                 var chosedCmd = 0;
                 for (int cmdd = 0; cmdd <= 2; cmdd++)
                 {
-                    var cmd = cmdd == 2 ? -1 : cmdd; 
+                    var cmd = cmdd == 2 ? -1 : cmdd;
                     var npaddle = new V(paddle.X + cmd, paddle.Y);
-                    
+
                     var backup = new Dictionary<V, int>();
                     backup[paddle] = tiles[paddle];
                     backup[npaddle] = tiles[npaddle];
-                    
+
                     tiles[paddle] = 0;
                     tiles[npaddle] = 3;
 
@@ -772,9 +1075,11 @@ namespace aoc
                                 backup[nextBallX] = tiles[nextBallX];
                                 tiles[nextBallX] = 0;
                             }
+
                             bdif = new V(-bdif.X, bdif.Y);
                             continue;
                         }
+
                         if (tiles[nextBallY] != 0)
                         {
                             if (tiles[nextBallY] == 2)
@@ -782,9 +1087,11 @@ namespace aoc
                                 backup[nextBallY] = tiles[nextBallY];
                                 tiles[nextBallY] = 0;
                             }
+
                             bdif = new V(bdif.X, -bdif.Y);
                             continue;
                         }
+
                         if (tiles[nextBall] != 0)
                         {
                             if (tiles[nextBall] == 2)
@@ -792,10 +1099,11 @@ namespace aoc
                                 backup[nextBall] = tiles[nextBall];
                                 tiles[nextBall] = 0;
                             }
+
                             bdif = new V(-bdif.X, -bdif.Y);
                             continue;
                         }
-                        
+
                         break;
                     }
 
@@ -809,7 +1117,7 @@ namespace aoc
                         break;
                     }
                 }
-                
+
                 Console.Out.WriteLine($"cmd={chosedCmd}");
 
                 // while (!Console.KeyAvailable)
@@ -819,8 +1127,8 @@ namespace aoc
                 // var key = Console.ReadKey();
                 Thread.Sleep(20);
                 computer.Input.Send(chosedCmd);
-                
-                
+
+
                 // if (key.Key == ConsoleKey.LeftArrow)
                 //     computer.Input.Send(-1);
                 // else if (key.Key == ConsoleKey.RightArrow)
