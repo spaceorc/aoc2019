@@ -12,6 +12,8 @@ namespace aoc
 
         public event Action OnWait;
 
+        public bool DataReady => data.Count > 0;
+        
         public void Send(params long[] values)
         {
             if (tcs != null)

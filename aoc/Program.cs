@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Experiments;
@@ -13,6 +14,760 @@ namespace aoc
     {
         static void Main(string[] args)
         {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+
+            var program = line.Split(',').Select(long.Parse).ToArray();
+
+            var computers = new List<Computer>();
+            var natX = 0L;
+            var natY = 0L;
+            var natReady = false;
+            for (int i = 0; i < 50; i++)
+            {
+                var computer = new Computer(i.ToString(), program);
+                computer.Input.Send(i);
+                var state = 0;
+                var target = 0;
+                var x = 0L;
+                var y = 0L;
+                computer.Output = value =>
+                {
+                    switch (state)
+                    {
+                        case 0:
+                            target = (int) value;
+                            state = 1;
+                            break;
+                        case 1:
+                            x = value;
+                            state = 2;
+                            break;
+                        case 2:
+                            y = value;
+                            state = 0;
+                            if (target == 255)
+                            {
+                                natReady = true;
+                                natX = x;
+                                natY = y;
+                                break;
+                                
+                            }
+                            computers[target].Input.Send(x, y);
+                            break;
+                        
+                    }
+                };
+                computers.Add(computer);
+            }
+
+            var tasks = new List<Task>(); 
+            foreach (var computer in computers)
+            {
+                tasks.Add(computer.Run());
+            }
+
+            var lastNatY = long.MinValue;
+            while (tasks.Any(t => !t.IsCompleted))
+            {
+                var faulted = tasks.FirstOrDefault(t => t.IsFaulted);
+                faulted?.Wait();
+
+                if (computers.All(c => !c.Input.DataReady) && natReady)
+                {
+                    Console.Out.WriteLine(natY);
+                    if (natY == lastNatY)
+                        break;
+
+                    lastNatY = natY;
+                    computers[0].Input.Send(natX, natY);
+                }
+                else
+                {
+                    foreach (var computer in computers)
+                    {
+                        if (!computer.Input.DataReady)
+                            computer.Input.Send(-1);
+                    }
+                }
+            }
+            
+            
+            
+        }
+
+        static void Main22(string[] args)
+        {
+            var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
+
+            //var pos = 2020L;
+            //26713960706268
+
+            // for (int i = 0; i < times; i++)
+            // {
+            //     if (i % 1000000 == 0)
+            //         Console.Out.WriteLine(i);
+            //     pos = Solve(pos, count);
+            //     if (pos == 2020L)
+            //     {
+            //         Console.Out.WriteLine($"Cycle size = {i + 1}");
+            //         break;
+            //     }
+            // }
+//             Array.Reverse(lines);
+//
+            // const int INVERT = 0;
+            // const int CUT = 1;
+            // const int INCREMENT = 2;
+            // var ops = new List<(int op, long operand)>();
+            // foreach (var line in lines)
+            // {
+            //     if (line == "deal into new stack")
+            //     {
+            //         //ops.Add((INVERT, 0));
+            //         ops.Add((INCREMENT, -1));
+            //         ops.Add((CUT, 1));
+            //         // pos = count - pos - 1;
+            //         // Console.Out.WriteLine("pos = count - pos - 1;");
+            //     }
+            //     else if (line.StartsWith("cut "))
+            //     {
+            //         var cut = int.Parse(line.Substring("cut ".Length));
+            //         ops.Add((CUT, cut));
+            //         // pos = (pos + cut + count) % count;
+            //         // Console.Out.WriteLine($"pos = (pos + {cut} + count) % count;");
+            //     }
+            //     else if (line.StartsWith("deal with increment "))
+            //     {
+            //         var increment = int.Parse(line.Substring("deal with increment ".Length));
+            //         ops.Add((INCREMENT, increment));
+            //         // var solved = false;
+            //         // for (int n = 0; n <= increment; n++)
+            //         // {
+            //         //     if ((pos + n * count) % increment == 0)
+            //         //     {
+            //         //         solved = true;
+            //         //         pos = (pos + n * count) / increment;
+            //         //         break;
+            //         //     }
+            //         // }
+            //         //
+            //         // if (!solved)
+            //         //     throw new Exception("WTF?");
+            //     }
+            //     else
+            //         throw new Exception("WTF");
+            // }
+            //
+            // for (int i = 0; i < ops.Count; i++)
+            // {
+            //     for (int k = 0; k < ops.Count - 1; k++)
+            //     {
+            //         if (ops[k].op == CUT)
+            //         {
+            //             if (ops[k + 1].op == INVERT)
+            //             {
+            //                 var t = ops[k];
+            //                 ops[k] = ops[k + 1];
+            //                 ops[k + 1] = (t.op, -t.operand);
+            //             }
+            //             else if (ops[k + 1].op == INCREMENT)
+            //             {
+            //                 var t = ops[k];
+            //                 ops[k] = ops[k + 1];
+            //                 ops[k + 1] = (t.op, (long) ((BigInteger)t.operand * ops[k].operand % count));
+            //             }
+            //         }
+            //         // else if (ops[k].op == INVERT)
+            //         // {
+            //         //     if (ops[k + 1].op == INCREMENT)
+            //         //     {
+            //         //         var t = ops[k];
+            //         //         ops[k] = ops[k + 1];
+            //         //         ops[k + 1] = t;
+            //         //         ops.Insert(k + 2, (CUT, 1));
+            //         //     }
+            //         // }
+            //     }
+            // }
+            //
+            // for (int i = ops.Count - 1; i >= 1; i--)
+            // {
+            //     if (ops[i].op == ops[i - 1].op && ops[i].op == CUT)
+            //     {
+            //         ops[i - 1] = (CUT, ops[i - 1].operand + ops[i].operand);
+            //         ops.RemoveAt(i);
+            //     }
+            //     else if (ops[i].op == ops[i - 1].op && ops[i].op == INCREMENT && ops[i].operand == -1)
+            //     {
+            //         ops.RemoveAt(i);
+            //     }
+            //
+            //     // else if (ops[i].op == ops[i - 1].op && ops[i].op == INCREMENT)
+            //     // {
+            //     //     ops[i - 1] = (INCREMENT, (long) (((BigInteger)ops[i - 1].operand * ops[i].operand % count + count) % count));
+            //     //     ops.RemoveAt(i);
+            //     // }
+            // }
+            //
+            // for (int i = ops.Count - 1; i >= 1; i--)
+            // {
+            //     if (ops[i].op == ops[i - 1].op && ops[i].op == INCREMENT)
+            //     {
+            //         ops[i - 1] = (INCREMENT, (long) ((BigInteger) ops[i - 1].operand * ops[i].operand % count));
+            //         ops.RemoveAt(i);
+            //     }
+            // }
+            // // 7209477733074599936
+            //
+            // //Console.Out.WriteLine(ops.Count(o => o.op == INVERT));
+            
+
+            //var pos = 26713960706268;
+            // foreach (var tuple in ops)
+            // {
+            //     Console.Out.WriteLine($"{tuple.op} {tuple.operand}");
+            //     switch (tuple.op)
+            //     {
+            //         // case INVERT:
+            //         //     //pos = count - pos - 1;
+            //         //     pos = (-pos + count) % count;
+            //         //     break;
+            //         case CUT:
+            //             pos = (pos - tuple.operand + count) % count;
+            //             break;
+            //         case INCREMENT:
+            //             pos = (long) (((BigInteger)pos * tuple.operand + count) % count);
+            //             break;
+            //     }
+            // }
+
+            const long count = 119315717514047;
+            const long times = 101741582076661;
+
+            
+            // Console.Out.WriteLine($"solv1 = {Solve(2020, count)}");
+            // Console.Out.WriteLine($"solv2 = {Solve(Solve(2020, count), count)}");
+            
+            BigInteger a = 91244990107807;
+            BigInteger b = 73268744725299;
+
+            // Console.Out.WriteLine((Solve(2020, count) * a + b)%count);
+            // Console.Out.WriteLine((Solve(Solve(2020, count), count) * a + b)%count);
+
+
+            var at = Power(a, times, count);
+            var b1 = at - a;
+            //var b2 = a - 1;
+            var div_1_a_minus_1 = 64449238758087;
+            //var b3 = b1 / b2;
+            var ob3 = b1 * div_1_a_minus_1;
+            var b4 = ob3 + 1;
+            var b5 = b4 * b;
+            var bb = (b5 % count + count)%count;
+            //bb = (a * b + b) % count;
+
+            Console.Out.WriteLine($"at = {at}");
+            Console.Out.WriteLine($"bb = {bb}");
+            Console.Out.WriteLine($"bb2 = {(a * b + b) % count}");
+            
+            //Console.Out.WriteLine($"solv -> {}");
+
+            //var y = (((2020 - bb) % count) + count) % count;
+
+            var atrev = 66385277977328;
+            //var atrev2 = 47283546981980;
+            //var atrev1 = 29313613460272;
+
+            var x = ((atrev * 2020 - atrev * bb) % count + count);
+
+            Console.Out.WriteLine(x);
+
+            BigInteger Power(BigInteger a, BigInteger power, BigInteger count)
+            {
+                BigInteger aPowerTimes = 1;
+                BigInteger pp = 0;
+                while (pp < power)
+                {
+                    BigInteger p = 1;
+                    BigInteger at = a;
+                    while (p * 2 <= power - pp)
+                    {
+                        at = at * at % count;
+                        p *= 2;
+                    }
+
+                    pp += p;
+                    aPowerTimes = aPowerTimes * at % count;
+                }
+
+                return (aPowerTimes + count) % count;
+            }
+        }
+
+        static BigInteger Solve(BigInteger pos, BigInteger count)
+        {
+            pos = count - pos - 1;
+            pos = (pos + -6969 + count) % count;
+            {
+                for (int n = 0; n < 45; n++)
+                {
+                    if ((pos + n * count) % 45 == 0)
+                    {
+                        pos = (pos + n * count) / 45;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            pos = (pos + 9677 + count) % count;
+            {
+                for (int n = 0; n < 10; n++)
+                {
+                    if ((pos + n * count) % 10 == 0)
+                    {
+                        pos = (pos + n * count) / 10;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 3980 + count) % count;
+            {
+                for (int n = 0; n < 75; n++)
+                {
+                    if ((pos + n * count) % 75 == 0)
+                    {
+                        pos = (pos + n * count) / 75;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            pos = (pos + -4047 + count) % count;
+            {
+                for (int n = 0; n < 70; n++)
+                {
+                    if ((pos + n * count) % 70 == 0)
+                    {
+                        pos = (pos + n * count) / 70;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 6489 + count) % count;
+            {
+                for (int n = 0; n < 45; n++)
+                {
+                    if ((pos + n * count) % 45 == 0)
+                    {
+                        pos = (pos + n * count) / 45;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -7220 + count) % count;
+            {
+                for (int n = 0; n < 31; n++)
+                {
+                    if ((pos + n * count) % 31 == 0)
+                    {
+                        pos = (pos + n * count) / 31;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -6509 + count) % count;
+            {
+                for (int n = 0; n < 30; n++)
+                {
+                    if ((pos + n * count) % 30 == 0)
+                    {
+                        pos = (pos + n * count) / 30;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -3405 + count) % count;
+            {
+                for (int n = 0; n < 22; n++)
+                {
+                    if ((pos + n * count) % 22 == 0)
+                    {
+                        pos = (pos + n * count) / 22;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -3893 + count) % count;
+            {
+                for (int n = 0; n < 72; n++)
+                {
+                    if ((pos + n * count) % 72 == 0)
+                    {
+                        pos = (pos + n * count) / 72;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 915 + count) % count;
+            {
+                for (int n = 0; n < 75; n++)
+                {
+                    if ((pos + n * count) % 75 == 0)
+                    {
+                        pos = (pos + n * count) / 75;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 3191 + count) % count;
+            {
+                for (int n = 0; n < 50; n++)
+                {
+                    if ((pos + n * count) % 50 == 0)
+                    {
+                        pos = (pos + n * count) / 50;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 5367 + count) % count;
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 61; n++)
+                {
+                    if ((pos + n * count) % 61 == 0)
+                    {
+                        pos = (pos + n * count) / 61;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -5180 + count) % count;
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 42; n++)
+                {
+                    if ((pos + n * count) % 42 == 0)
+                    {
+                        pos = (pos + n * count) / 42;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -4097 + count) % count;
+            {
+                for (int n = 0; n < 51; n++)
+                {
+                    if ((pos + n * count) % 51 == 0)
+                    {
+                        pos = (pos + n * count) / 51;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 70; n++)
+                {
+                    if ((pos + n * count) % 70 == 0)
+                    {
+                        pos = (pos + n * count) / 70;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -2966 + count) % count;
+            {
+                for (int n = 0; n < 56; n++)
+                {
+                    if ((pos + n * count) % 56 == 0)
+                    {
+                        pos = (pos + n * count) / 56;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -5621 + count) % count;
+            pos = count - pos - 1;
+            pos = (pos + 4276 + count) % count;
+            {
+                for (int n = 0; n < 70; n++)
+                {
+                    if ((pos + n * count) % 70 == 0)
+                    {
+                        pos = (pos + n * count) / 70;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 6867 + count) % count;
+            {
+                for (int n = 0; n < 56; n++)
+                {
+                    if ((pos + n * count) % 56 == 0)
+                    {
+                        pos = (pos + n * count) / 56;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 29; n++)
+                {
+                    if ((pos + n * count) % 29 == 0)
+                    {
+                        pos = (pos + n * count) / 29;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -532 + count) % count;
+            {
+                for (int n = 0; n < 33; n++)
+                {
+                    if ((pos + n * count) % 33 == 0)
+                    {
+                        pos = (pos + n * count) / 33;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            pos = (pos + -6767 + count) % count;
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 4; n++)
+                {
+                    if ((pos + n * count) % 4 == 0)
+                    {
+                        pos = (pos + n * count) / 4;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -8527 + count) % count;
+            {
+                for (int n = 0; n < 46; n++)
+                {
+                    if ((pos + n * count) % 46 == 0)
+                    {
+                        pos = (pos + n * count) / 46;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 8999 + count) % count;
+            {
+                for (int n = 0; n < 43; n++)
+                {
+                    if ((pos + n * count) % 43 == 0)
+                    {
+                        pos = (pos + n * count) / 43;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 5801 + count) % count;
+            {
+                for (int n = 0; n < 17; n++)
+                {
+                    if ((pos + n * count) % 17 == 0)
+                    {
+                        pos = (pos + n * count) / 17;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 4776 + count) % count;
+            pos = count - pos - 1;
+            pos = (pos + 294 + count) % count;
+            {
+                for (int n = 0; n < 49; n++)
+                {
+                    if ((pos + n * count) % 49 == 0)
+                    {
+                        pos = (pos + n * count) / 49;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -2409 + count) % count;
+            {
+                for (int n = 0; n < 13; n++)
+                {
+                    if ((pos + n * count) % 13 == 0)
+                    {
+                        pos = (pos + n * count) / 13;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            pos = (pos + 2329 + count) % count;
+            {
+                for (int n = 0; n < 56; n++)
+                {
+                    if ((pos + n * count) % 56 == 0)
+                    {
+                        pos = (pos + n * count) / 56;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 3600 + count) % count;
+            {
+                for (int n = 0; n < 21; n++)
+                {
+                    if ((pos + n * count) % 21 == 0)
+                    {
+                        pos = (pos + n * count) / 21;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -6026 + count) % count;
+            {
+                for (int n = 0; n < 45; n++)
+                {
+                    if ((pos + n * count) % 45 == 0)
+                    {
+                        pos = (pos + n * count) / 45;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 40; n++)
+                {
+                    if ((pos + n * count) % 40 == 0)
+                    {
+                        pos = (pos + n * count) / 40;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -5258 + count) % count;
+            pos = count - pos - 1;
+            pos = (pos + 3842 + count) % count;
+            {
+                for (int n = 0; n < 14; n++)
+                {
+                    if ((pos + n * count) % 14 == 0)
+                    {
+                        pos = (pos + n * count) / 14;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -7380 + count) % count;
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 62; n++)
+                {
+                    if ((pos + n * count) % 62 == 0)
+                    {
+                        pos = (pos + n * count) / 62;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -7187 + count) % count;
+            {
+                for (int n = 0; n < 17; n++)
+                {
+                    if ((pos + n * count) % 17 == 0)
+                    {
+                        pos = (pos + n * count) / 17;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 239 + count) % count;
+            pos = count - pos - 1;
+            pos = (pos + -864 + count) % count;
+            {
+                for (int n = 0; n < 71; n++)
+                {
+                    if ((pos + n * count) % 71 == 0)
+                    {
+                        pos = (pos + n * count) / 71;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 7894 + count) % count;
+            {
+                for (int n = 0; n < 52; n++)
+                {
+                    if ((pos + n * count) % 52 == 0)
+                    {
+                        pos = (pos + n * count) / 52;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -1086 + count) % count;
+            {
+                for (int n = 0; n < 63; n++)
+                {
+                    if ((pos + n * count) % 63 == 0)
+                    {
+                        pos = (pos + n * count) / 63;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + -5590 + count) % count;
+            {
+                for (int n = 0; n < 67; n++)
+                {
+                    if ((pos + n * count) % 67 == 0)
+                    {
+                        pos = (pos + n * count) / 67;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 13; n++)
+                {
+                    if ((pos + n * count) % 13 == 0)
+                    {
+                        pos = (pos + n * count) / 13;
+                        break;
+                    }
+                }
+            }
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 62; n++)
+                {
+                    if ((pos + n * count) % 62 == 0)
+                    {
+                        pos = (pos + n * count) / 62;
+                        break;
+                    }
+                }
+            }
+            pos = (pos + 1984 + count) % count;
+            pos = count - pos - 1;
+            pos = (pos + 1712 + count) % count;
+            pos = count - pos - 1;
+            {
+                for (int n = 0; n < 34; n++)
+                {
+                    if ((pos + n * count) % 34 == 0)
+                    {
+                        pos = (pos + n * count) / 34;
+                        break;
+                    }
+                }
+            }
+            return pos;
         }
 
         static void Main21(string[] args)
@@ -1288,13 +2043,7 @@ namespace aoc
 
         static long Lcm(params long[] values)
         {
-            var r = 1L;
-            for (int i = 0; i < values.Length; i++)
-            {
-                r = Lcm(r, values[i]);
-            }
-
-            return r;
+            return values.Aggregate(1L, Lcm);
         }
 
         static long Lcm(long a, long b)
@@ -1307,9 +2056,9 @@ namespace aoc
             while (a != 0 && b != 0)
             {
                 if (a > b)
-                    a = a % b;
+                    a %= b;
                 else
-                    b = b % a;
+                    b %= a;
             }
 
             return a + b;
