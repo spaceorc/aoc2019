@@ -14,6 +14,180 @@ namespace aoc
     {
         static void Main(string[] args)
         {
+            var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
+//             var lines = @"
+// ....#
+// #..#.
+// #..##
+// ..#..
+// #....
+//
+// ".Trim().Split('\n').Select(x => x.Trim()).ToArray();            
+            int bugs = 0;
+            for (int y = 0; y < 5; y++)
+            {
+                for (int x = 0; x < 5; x++)
+                {
+                    if (lines[y][x] == '#')
+                        bugs |= 1 << (y * 5 + x);
+                }
+            }
+
+            var levels = new int[205];
+            var next = new int[205];
+            levels[101] = bugs;
+
+            for (int i = 0; i < 200; i++)
+            {
+                Array.Fill(next, 0);
+                for (int level = 1; level <= levels.Length - 2; level++)
+                    next[level] = Iteration(levels, level);
+
+                var tmp = levels;
+                levels = next;
+                next = tmp;
+            }
+
+            var n = 0;
+            foreach (var v in levels)
+            {
+                for (int y = 0; y < 5; y++)
+                {
+                    for (int x = 0; x < 5; x++)
+                    {
+                        var b = y * 5 + x;
+                        if ((v & (1 << b)) != 0)
+                            n++;
+                    }
+                }
+            }
+
+            Console.Out.WriteLine(n);
+            
+            // var set = new HashSet<int>();
+            // while (set.Add(bugs))
+            // {
+            //     for (int y = 0; y < 5; y++)
+            //     {
+            //         for (int x = 0; x < 5; x++)
+            //         {
+            //             var b = y * 5 + x;
+            //             if ((bugs & (1 << b)) == 0)
+            //                 Console.Write('.');
+            //             else
+            //                 Console.Write('#');
+            //         }
+            //
+            //         Console.WriteLine();
+            //     }
+            //     Console.WriteLine();
+            //     
+            //     bugs = Iteration(bugs);
+            //
+            // }
+
+            //Console.Out.WriteLine(bugs);
+
+            int Iteration(int[] levels, int level)
+            {
+                var old = levels[level];
+                int next = 0;
+                for (int y = 0; y < 5; y++)
+                {
+                    for (int x = 0; x < 5; x++)
+                    {
+                        if (y == 2 && x == 2)
+                            continue;
+                        
+                        var b = y * 5 + x;
+                        
+                        var n = 0;
+                        if (y > 0)
+                            n += (old >> (b - 5)) & 1;
+                        else
+                        {
+                            var prev = levels[level - 1];
+                            if ((prev & (1 << 7)) != 0)
+                                n++;
+                        }
+
+                        if (y < 5 - 1)
+                            n += (old >> (b + 5)) & 1;
+                        else
+                        {
+                            var prev = levels[level - 1];
+                            if ((prev & (1 << 17)) != 0)
+                                n++;
+                        }
+
+                        if (x > 0)
+                            n += (old >> (b - 1)) & 1;
+                        else
+                        {
+                            var prev = levels[level - 1];
+                            if ((prev & (1 << 11)) != 0)
+                                n++;
+                        }
+
+                        if (x < 5 - 1)
+                            n += (old >> (b + 1)) & 1;
+                        else
+                        {
+                            var prev = levels[level - 1];
+                            if ((prev & (1 << 13)) != 0)
+                                n++;
+                        }
+
+                        if (x == 2 && y == 1)
+                        {
+                            var prev = levels[level + 1];
+                            for (int i = 0; i < 5; i++)
+                            {
+                                if ((prev & (1 << i)) != 0)
+                                    n++;    
+                            }
+                        }
+                        if (x == 2 && y == 3)
+                        {
+                            var prev = levels[level + 1];
+                            for (int i = 0; i < 5; i++)
+                            {
+                                if ((prev & (1 << (i + 20))) != 0)
+                                    n++;    
+                            }
+                        }
+                        if (x == 1 && y == 2)
+                        {
+                            var prev = levels[level + 1];
+                            for (int i = 0; i < 5; i++)
+                            {
+                                if ((prev & (1 << (i * 5))) != 0)
+                                    n++;    
+                            }
+                        }
+                        if (x == 3 && y == 2)
+                        {
+                            var prev = levels[level + 1];
+                            for (int i = 0; i < 5; i++)
+                            {
+                                if ((prev & (1 << (i * 5 + 4))) != 0)
+                                    n++;    
+                            }
+                        }
+
+                        if ((old & (1 << b)) == 0 && (n == 1 || n == 2))
+                            next |= 1 << b;
+                        if ((old & (1 << b)) != 0 && n == 1)
+                            next |= 1 << b;
+                    }
+                }
+
+                return next;
+            }
+        }
+        
+        static void Main23(string[] args)
+        {
             var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
 
             var program = line.Split(',').Select(long.Parse).ToArray();
