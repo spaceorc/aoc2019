@@ -35,8 +35,16 @@ namespace aoc
             if (data.Count > 0)
                 return data.Dequeue();
 
-            OnWait?.Invoke();
-            
+            try
+            {
+                OnWait?.Invoke();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                throw;
+            }
+
             if (data.Count > 0)
                 return data.Dequeue();
             

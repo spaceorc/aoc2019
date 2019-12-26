@@ -7,12 +7,170 @@ using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
 using Experiments;
+using MoreLinq.Extensions;
 
 namespace aoc
 {
     class Program
     {
         static void Main(string[] args)
+        {
+            var line = File.ReadAllText("/Users/spaceorc/Downloads/input.txt");
+            var program = line.Split(',').Select(long.Parse).ToArray();
+            
+            string lastOutput = "";
+            
+            var computer = new Computer("prog", program)
+            {
+                Output = value =>
+                {
+                    lastOutput += (char) (int) value;
+                    Console.Out.Write((char) (int) value);
+                }
+            };
+
+            // var tiles = new Dictionary<string, string[]>();
+            // var tileItems = new Dictionary<string, string[]>();
+            // var passages = new Dictionary<(string, string), string>();
+            //
+            // string pos = null;
+            // string command = null;
+            //
+            // string InvCmd(string cmd)
+            // {
+            //     switch (cmd)
+            //     {
+            //         case "north": return "south";
+            //         case "south": return "north";
+            //         case "east": return "west";
+            //         case "west": return "east";
+            //         default: throw new Exception($"Bad inv: {cmd}");
+            //     }
+            // }
+
+            //WriteState();
+
+            computer.Input.OnWait += () =>
+            {
+                var output = lastOutput.Split('\n');
+                var doors = output.SkipWhile(x => x != "Doors here lead:").Skip(1).TakeWhile(x => x.StartsWith("- ")).Select(x => x.Substring(2)).ToArray();
+                var items = output.SkipWhile(x => x != "Items here:").Skip(1).TakeWhile(x => x.StartsWith("- ")).Select(x => x.Substring(2)).ToArray();
+                lastOutput = "";
+                
+                // tiles[room] = doors;
+                // tileItems[room] = items;
+                //
+                // if (command != null)
+                // {
+                //     passages[(pos, command)] = room;
+                //     passages[(room, InvCmd(command))] = pos;
+                // }
+                //
+                // pos = room;
+                //
+                // //WriteState();
+                //
+                // foreach (var door in doors)
+                // {
+                //     if (!passages.ContainsKey((room, door)))
+                //     {
+                //         Console.Out.WriteLine($"Command: {door}");
+                //         command = door;
+                //         computer.Input.Send((command + "\n").Select(x => (long) x).ToArray());
+                //         return;
+                //     }
+                // }
+                //
+                // var queue = new Queue<string>();
+                // queue.Enqueue(pos);
+                // var used = new Dictionary<string, string> {{pos, pos}};
+                //
+                // while (queue.Count > 0)
+                // {
+                //     var cur = queue.Dequeue();
+                //     var curDoors = tiles[cur];
+                //     foreach (var door in curDoors)
+                //     {
+                //         if (passages.TryGetValue((cur, door), out var next))
+                //         {
+                //             if (used.ContainsKey(next))
+                //                 continue;
+                //             used.Add(next, cur);
+                //             queue.Enqueue(next);
+                //         }
+                //         else
+                //         {
+                //             while (true)
+                //             {
+                //                 var prev = used[cur];
+                //                 if (prev == pos)
+                //                 {
+                //                     command = passages.Single(p => p.Key.Item1 == pos && p.Value == cur).Key.Item2;
+                //                     pos = cur;
+                //                     Console.Out.WriteLine($"Command: {command}");
+                //                     computer.Input.Send((command + "\n").Select(x => (long) x).ToArray());
+                //                     return;
+                //                 }
+                //             
+                //                 cur = prev;
+                //             }
+                //         }
+                //     }
+                // }
+                //
+                // throw new Exception("WTF! Couldn't find path");
+                //
+                //
+                Console.Write("> ");
+                var cmd = Preprocess(Console.ReadLine());
+                Console.WriteLine("COMMAND: " + cmd);
+                var inp = (cmd + '\n').Select(x => (long) x).ToArray();
+                computer.Input.Send(inp);
+                
+                string Preprocess(string s)
+                {
+                    switch (s)
+                    {
+                        case "n":
+                            return "north";
+                        case "s":
+                            return "south";
+                        case "w":
+                            return "west";
+                        case "e":
+                            return "east";
+                        default:
+                            if (s.StartsWith("t "))
+                            {
+                                var its = items.Where(x => x.Contains(s.Substring(2))).ToList();
+                                if (its.Count == 1)
+                                    return "take " + its[0];
+                                return "take " + s.Substring(2);
+                            }
+
+                            return s;
+                    }
+                }
+            };            
+
+            var task = computer.Run();
+            if (task.IsCompleted)
+                task.Wait();
+            else
+                throw new Exception("Didn't complete!");
+
+
+            // foreach (var kvp in tileItems)
+            // {
+            //     foreach (var s in kvp.Value)
+            //     {
+            //         Console.Out.WriteLine(s);
+            //     }
+            // }
+            
+        }
+
+        static void Main24(string[] args)
         {
             var lines = File.ReadAllLines("/Users/spaceorc/Downloads/input.txt");
 //             var lines = @"
